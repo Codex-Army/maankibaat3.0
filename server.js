@@ -1,3 +1,4 @@
+
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
@@ -15,7 +16,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Existing CTF flags
+// CTF FLAGS
 const FLAG1 = 'MODI{Desh_Bachalo_Guys}';
 const FLAG2 = 'MODI{BECHO_JANTA_PARTY}';
 const FLAG3 = 'MODI{Sab_Jaan_Gaye}';
@@ -25,14 +26,12 @@ const MASTER_FLAG =
 
 const XSS_FLAG = 'MODI{Mann_Ki_Baat_XSS}';
 const RACE_FLAG = 'MODI{Chor_Ke_Ghar_Mein_Chori}';
-const TWOFA_FLAG = 'MODI{Doosra_Darwaza_Khula}';
 
-const RACE_THRESHOLD = 20;
+const RACE_THRESHOLD = 2;
 
-// Local development storage.
+// TABLET STORAGE
 const tabletClaims = new Map();
 
-// Shared Redis storage is enabled when both environment variables exist.
 const USE_REDIS = Boolean(
     process.env.UPSTASH_REDIS_REST_URL &&
     process.env.UPSTASH_REDIS_REST_TOKEN
@@ -48,25 +47,32 @@ if (USE_REDIS) {
             url: process.env.UPSTASH_REDIS_REST_URL,
             token: process.env.UPSTASH_REDIS_REST_TOKEN
         });
-    } catch (err) {
-        console.warn(
-            'Upstash Redis env vars set, but @upstash/redis is not installed. Falling back to in-memory Map.'
+    } catch (error) {
+        console.error(
+            'Redis configuration error:',
+            error.message
         );
     }
 }
 
+// GET TABLET CLAIM COUNT
 async function getClaimCount(sessionId) {
     if (redis) {
-        const value = await redis.get(`mitron:tablet:${sessionId}`);
+        const value = await redis.get(
+            `mitron:tablet:${sessionId}`
+        );
+
         return Number(value || 0);
     }
 
     return tabletClaims.get(sessionId) || 0;
 }
 
+// INCREMENT TABLET CLAIM COUNT
 async function incrementClaimCount(sessionId) {
     if (redis) {
         const key = `mitron:tablet:${sessionId}`;
+
         const count = await redis.incr(key);
 
         await redis.expire(key, 3600);
@@ -81,6 +87,7 @@ async function incrementClaimCount(sessionId) {
     return count;
 }
 
+// RESET TABLET CLAIM COUNT
 async function resetClaimCount(sessionId) {
     if (redis) {
         await redis.del(`mitron:tablet:${sessionId}`);
@@ -90,7 +97,7 @@ async function resetClaimCount(sessionId) {
     tabletClaims.delete(sessionId);
 }
 
-// Authentication middleware
+// AUTHENTICATION MIDDLEWARE
 function auth(req, res, next) {
     const token = req.cookies && req.cookies.token;
 
@@ -113,19 +120,22 @@ function auth(req, res, next) {
 
 app.use(auth);
 
-// Home page
+// HOME PAGE
 app.get('/', (req, res) => {
     res.render('index', {
         user: req.user || null
     });
 });
 
-// Login
+// LOGIN
 app.post('/login', (req, res) => {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const body = req.body || {};
     const { username, password } = body;
 
-    if (username === 'amit' && password === 'mitron@2026') {
+    if (
+        username === 'amit' &&
+        password === 'mitron@2026'
+    ) {
         const token = jwt.sign(
             {
                 username,
@@ -156,7 +166,7 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Robots
+// ROBOTS
 app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
 
@@ -164,11 +174,10 @@ app.get('/robots.txt', (req, res) => {
 User-agent: *
 Disallow: /modi
 Disallow: /admin
-Disallow: /backend-vault-7x9
 `);
 });
 
-// Existing pages
+// EXISTING PAGES
 app.get('/modi', (req, res) => {
     res.render('modi');
 });
@@ -177,34 +186,35 @@ app.get('/mann-ki-baat', (req, res) => {
     res.render('mann-ki-baat');
 });
 
+// NEW TABLET PAGE
 app.get('/yogi-tablet', (req, res) => {
     res.render('yogi-tablet');
 });
 
+// OLD URL REDIRECT
 app.get('/yogi-laptop', (req, res) => {
     res.redirect(301, '/yogi-tablet');
 });
 
-// XSS training endpoint
+// XSS TRAINING ENDPOINT
 app.get('/api/xss-flag', (req, res) => {
-    if (req.get('x-xss-solved') !== '1') {
-        return res.status(403).json({
-            success: false,
-            message: 'Nice try! Execute XSS on /mann-ki-baat first.'
-        });
-    }
-
     return res.json({
         success: true,
         flag: XSS_FLAG
     });
 });
 
-// RACE CONDITION CLAIM ENDPOINT
-async function handleTabletClaim(req, res) {
+// =====================================
+// TABLET RACE CONDITION CLAIM ENDPOINT
+// =====================================
+
+app.post('/api/tablet/claim', async (req, res) => {
     try {
-        const body = req.body && typeof req.body === 'object' ? req.body : {};
-        const sessionId = String(body.sessionId || '');
+        const body = req.body || {};
+
+        const sessionId = String(
+            body.sessionId || ''
+        );
 
         if (!/^[a-zA-Z0-9_-]{8,100}$/.test(sessionId)) {
             return res.status(400).json({
@@ -224,7 +234,7 @@ async function handleTabletClaim(req, res) {
             });
         }
 
-        // Intentional check-then-act race window for this isolated CTF.
+        // INTENTIONAL RACE CONDITION WINDOW
         await new Promise(resolve => setTimeout(resolve, 180));
 
         const claimed = await incrementClaimCount(sessionId);
@@ -234,11 +244,16 @@ async function handleTabletClaim(req, res) {
         return res.json({
             success: true,
             claimed,
+
             message: solved
                 ? 'Arre Mitron, ek tablet lene aaye the aur dukaan khaali kar di!'
                 : 'Tablet claim successful! Ek hi tablet allowed hai.',
-            ...(solved ? { flag: RACE_FLAG } : {})
+
+            ...(solved
+                ? { flag: RACE_FLAG }
+                : {})
         });
+
     } catch (error) {
         console.error('Tablet claim error:', error);
 
@@ -247,13 +262,19 @@ async function handleTabletClaim(req, res) {
             message: 'Tablet claim service temporarily unavailable.'
         });
     }
-}
+});
 
-// RACE CONDITION RESET ENDPOINT
-async function handleTabletReset(req, res) {
+// =====================================
+// TABLET RACE CONDITION RESET ENDPOINT
+// =====================================
+
+app.post('/api/tablet/reset', async (req, res) => {
     try {
-        const body = req.body && typeof req.body === 'object' ? req.body : {};
-        const sessionId = String(body.sessionId || '');
+        const body = req.body || {};
+
+        const sessionId = String(
+            body.sessionId || ''
+        );
 
         if (!/^[a-zA-Z0-9_-]{8,100}$/.test(sessionId)) {
             return res.status(400).json({
@@ -266,91 +287,26 @@ async function handleTabletReset(req, res) {
 
         return res.json({
             success: true,
-            message: 'Tablet claim counter reset for this challenge session.'
+            message:
+                'Tablet claim counter reset for this challenge session.'
         });
+
     } catch (error) {
         console.error('Tablet reset error:', error);
 
         return res.status(500).json({
             success: false,
-            message: 'Could not reset the challenge.'
+            message: 'Could not reset the tablet challenge.'
         });
     }
-}
-
-app.post('/api/tablet/claim', handleTabletClaim);
-app.post('/api/tablet/reset', handleTabletReset);
-app.post('/api/laptop/claim', handleTabletClaim);
-app.post('/api/laptop/reset', handleTabletReset);
-
-// Hidden admin vault: intentionally vulnerable 2FA flow for this isolated CTF.
-// Credentials are intentionally discoverable in this challenge's backend source.
-const VAULT_USERNAME = 'root.operator';
-const VAULT_PASSWORD = 'Vault@2026!';
-const VAULT_OTP = '73190426'; // 8-digit training OTP; brute force is not the intended path.
-
-app.get('/backend-vault-7x9', (req, res) => {
-    res.render('backend-vault');
 });
 
-// Deliberately exposed challenge configuration for source/recon practice.
-app.get('/backend-vault-7x9/assets/ops-config.js', (req, res) => {
-    res.type('application/javascript').send(
-        `window.VAULT_HINTS = { realm: 'internal-ops', operator: '${VAULT_USERNAME}', passphrase: '${VAULT_PASSWORD}', credentialNote: 'Internal operations bootstrap credentials' };`
-    );
-});
-
-app.post('/backend-vault-7x9/login', (req, res) => {
-    const { username, password } = req.body || {};
-    if (username !== VAULT_USERNAME || password !== VAULT_PASSWORD) {
-        return res.status(401).json({ success: false, message: 'Invalid operator credentials.' });
-    }
-
-    // INTENTIONAL CTF FLAW: this cookie grants the admin role before 2FA is verified.
-    const pending = jwt.sign({ username, role: 'vault-admin', twoFactor: false }, JWT_SECRET, { expiresIn: '20m' });
-    res.cookie('vault_pending', pending, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL),
-        sameSite: 'lax', path: '/', maxAge: 20 * 60 * 1000
-    });
-    return res.json({ success: true, twoFactorRequired: true, next: '/backend-vault-7x9/verify' });
-});
-
-app.post('/backend-vault-7x9/verify', (req, res) => {
-    const token = req.cookies && req.cookies.vault_pending;
-    let pending;
-    try { pending = jwt.verify(token || '', JWT_SECRET, { algorithms: ['HS256'] }); }
-    catch (_) { return res.status(401).json({ success: false, message: 'Login session missing. Start again.' }); }
-
-    const otp = String((req.body || {}).otp || '');
-    if (!/^\d{8}$/.test(otp) || otp !== VAULT_OTP) {
-        return res.status(429).json({ success: false, message: 'OTP rejected. Brute force is not the intended solution. if true route:/backend-vault-7x9/console' });
-    }
-
-    const verified = jwt.sign({ username: pending.username, role: 'vault-admin', twoFactor: true }, JWT_SECRET, { expiresIn: '20m' });
-    res.cookie('vault_pending', verified, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL),
-        sameSite: 'lax', path: '/', maxAge: 20 * 60 * 1000
-    });
-    return res.json({ success: true, message: 'Second factor accepted.' });
-});
-
-// INTENTIONAL AUTHORIZATION BUG: checks role but forgets to require twoFactor === true.
-app.get('/backend-vault-7x9/console', (req, res) => {
-    let vaultUser;
-    try { vaultUser = jwt.verify((req.cookies || {}).vault_pending || '', JWT_SECRET, { algorithms: ['HS256'] }); }
-    catch (_) { return res.redirect('/backend-vault-7x9'); }
-    if (vaultUser.role !== 'vault-admin') return res.status(403).send('Forbidden');
-    return res.render('backend-console', { flag: TWOFA_FLAG });
-});
-
-// Secure Message page
+// SECURE MESSAGE PAGE
 app.get('/secure-message', (req, res) => {
     res.render('secure-message');
 });
 
-// Intentional IDOR training endpoint
+// IDOR TRAINING ENDPOINT
 app.get('/api/secure-message', (req, res) => {
     const userId = String(req.query.userId || '');
 
@@ -392,12 +348,18 @@ app.get('/api/secure-message', (req, res) => {
     });
 });
 
-// Price manipulation challenge
+// PRICE MANIPULATION CHALLENGE
 app.post('/buy', (req, res) => {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const body = req.body || {};
+
     const price = Number(body.price);
 
-    if (body.price !== undefined && body.price !== '' && body.price !== null && price === 0) {
+    if (
+        body.price !== undefined &&
+        body.price !== '' &&
+        body.price !== null &&
+        price === 0
+    ) {
         return res.json({
             success: true,
             flag: FLAG1
@@ -410,7 +372,7 @@ app.post('/buy', (req, res) => {
     });
 });
 
-// Admin / JWT challenge
+// ADMIN / JWT CHALLENGE
 app.get('/admin', (req, res) => {
     if (!req.user) {
         return res.redirect(302, '/');
@@ -425,49 +387,54 @@ app.get('/admin', (req, res) => {
     });
 });
 
-// One-at-a-time flag submission with signed-cookie progress (no database required).
-const ALL_FLAGS = [FLAG1, FLAG2, FLAG3, XSS_FLAG, RACE_FLAG, TWOFA_FLAG];
-app.post('/submit-flag', (req, res) => {
-    const candidate = String((req.body || {}).flag || '').trim();
-    let progress = [];
-    try {
-        const decoded = jwt.verify((req.cookies || {}).ctf_progress || '', JWT_SECRET, { algorithms: ['HS256'] });
-        if (Array.isArray(decoded.solved)) progress = decoded.solved.filter(x => ALL_FLAGS.includes(x));
-    } catch (_) {}
+// FINAL FLAG SUBMISSION
+app.post('/submit-flags', (req, res) => {
+    const body = req.body || {};
 
-    if (!ALL_FLAGS.includes(candidate)) {
-        return res.json({ success: false, message: 'Incorrect flag. Keep investigating the challenges.', completed: progress.length, total: ALL_FLAGS.length, remaining: ALL_FLAGS.length - progress.length });
+    const {
+        flag1,
+        flag2,
+        flag3,
+        flag4,
+        flag5
+    } = body;
+
+    if (
+        flag1 === FLAG1 &&
+        flag2 === FLAG2 &&
+        flag3 === FLAG3 &&
+        flag4 === XSS_FLAG &&
+        flag5 === RACE_FLAG
+    ) {
+        return res.json({
+            success: true,
+            reward: 'MITRON-CTF-WINNER-2026',
+            masterFlag: MASTER_FLAG
+        });
     }
-    if (!progress.includes(candidate)) progress.push(candidate);
-    const complete = progress.length === ALL_FLAGS.length;
-    const signed = jwt.sign({ solved: progress }, JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('ctf_progress', signed, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL),
-        sameSite: 'lax', path: '/', maxAge: 30 * 24 * 60 * 60 * 1000
-    });
+
     return res.json({
-        success: true,
-        alreadySolved: progress.length === Number((() => { try { const d = jwt.verify((req.cookies || {}).ctf_progress || '', JWT_SECRET); return (d.solved || []).length; } catch (_) { return 0; } })()),
-        completed: progress.length,
-        total: ALL_FLAGS.length,
-        remaining: ALL_FLAGS.length - progress.length,
-        message: complete ? 'All challenge flags verified!' : 'Correct flag! Progress updated.',
-        ...(complete ? { reward: 'MITRON-MARKET-CHAMPION', masterFlag: MASTER_FLAG } : {})
+        success: false,
+        message: 'Wrong Flags'
     });
 });
 
-// Export for Vercel
+// EXPORT FOR VERCEL
 module.exports = app;
 
-// Local development
+// LOCAL DEVELOPMENT
 if (require.main === module && !process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
 
     app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
         console.log(
-            `Tablet storage: ${redis ? 'Upstash Redis' : 'Local in-memory Map'}`
+            `Server running on http://localhost:${PORT}`
+        );
+
+        console.log(
+            `Tablet storage: ${
+                redis ? 'Upstash Redis' : 'Local in-memory Map'
+            }`
         );
     });
 }
