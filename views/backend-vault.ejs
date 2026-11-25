@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Adani Group | Executive Access</title>
+<style>
+:root{--gold:#d5ad62;--ink:#080b12;--muted:#9ba4b3}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 20% 0%,#263044 0,#0b1019 48%,#05070b 100%);color:#f5f2eb;font-family:Inter,Segoe UI,Arial,sans-serif;display:grid;place-items:center;padding:28px}
+.shell{width:min(1080px,100%);display:grid;grid-template-columns:1.1fr .9fr;overflow:hidden;border:1px solid #78623b;border-radius:22px;background:#0c111a;box-shadow:0 28px 90px #000b}
+.visual{position:relative;min-height:650px;background:#151c28}.visual img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:center}.visual:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#080b12 0%,#080b1266 45%,#080b1220 100%)}
+.brand{position:absolute;z-index:1;left:32px;top:30px;font-size:12px;letter-spacing:3px;color:#f1d79e}.visual-copy{position:absolute;z-index:1;left:34px;right:34px;bottom:34px}.visual-copy h2{font-size:30px;margin:0 0 9px;letter-spacing:.3px}.visual-copy p{margin:0;color:#d1d5dd;line-height:1.6}
+.panel{padding:48px 42px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(145deg,#131b29,#090d14)}.eyebrow{font-size:10px;letter-spacing:3px;color:var(--gold);font-weight:700}.panel h1{font-size:27px;margin:12px 0 8px}.intro{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 30px}.line{height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin:0 0 26px}
+label{display:block;font-size:12px;color:#d6d9df;margin:15px 0 8px}input{width:100%;padding:14px 15px;background:#080c13;color:white;border:1px solid #384354;border-radius:9px;outline:none;font-size:14px}input:focus{border-color:var(--gold);box-shadow:0 0 0 3px #d5ad621a}button{width:100%;margin-top:22px;padding:15px;border:1px solid #e5c47e;border-radius:9px;background:linear-gradient(110deg,#b68a42,#e0c17b);color:#16120b;font-weight:800;letter-spacing:1.4px;cursor:pointer;transition:.2s}button:hover{filter:brightness(1.1);transform:translateY(-1px)}button:disabled{opacity:.65;cursor:wait;transform:none}.status{min-height:48px;margin-top:18px;padding:12px;border:1px solid #303b4b;border-radius:8px;color:#c8d0dc;font-size:12px;line-height:1.5;white-space:pre-wrap}.status.error{border-color:#8d4141;color:#ffb4b4}.status.ok{border-color:#477b5b;color:#a7e7b9}.foot{margin-top:24px;color:#687487;font-size:10px;letter-spacing:1.5px;display:flex;justify-content:space-between}.sound-note{font-size:11px;color:#768294;margin-top:13px}#otpForm[hidden],#login[hidden]{display:none}
+@media(max-width:760px){body{padding:12px}.shell{grid-template-columns:1fr}.visual{min-height:280px}.visual-copy h2{font-size:24px}.panel{padding:32px 24px}}
+</style>
+</head>
+<body>
+<main class="shell">
+ <section class="visual">
+  <img src="/images/adani-admin.jpg" alt="Public event photograph used in the fictional CTF admin portal">
+  <div class="brand">ADANI GROUP · INTERNAL SYSTEMS</div>
+  <div class="visual-copy"><h2>Executive Access Portal</h2><p>Restricted administrative gateway. Authorized access only. All activity may be monitored.</p></div>
+ </section>
+ <section class="panel">
+  <div class="eyebrow">SECURE OPERATIONS / GATE 7X9</div>
+  <h1 id="heading">Administrator Sign In</h1>
+  <p class="intro" id="intro">Authenticate with your executive credentials to continue to the internal console.</p>
+  <div class="line"></div>
+  <form id="login" autocomplete="on">
+   <label for="username">ADMIN USER ID</label><input id="username" name="username" autocomplete="username" placeholder="Enter administrator ID" required>
+   <label for="password">PASSWORD</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+   <button id="loginBtn" type="submit">ACCESS ADMIN PORTAL</button>
+  </form>
+  <form id="otpForm" hidden>
+   <label for="otp">8-DIGIT VERIFICATION CODE</label><input id="otp" name="otp" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="00000000" autocomplete="one-time-code" required>
+   <button id="otpBtn" type="submit">VERIFY &amp; CONTINUE</button>
+  </form>
+  <div id="msg" class="status" role="status" aria-live="polite">Awaiting administrator credentials.</div>
+  <div class="sound-note">AUDIO ENABLED · LOGIN / VERIFICATION ALERTS</div>
+  <div class="foot"><span>ADANI · OPS CONSOLE</span><span>BUILD 7X9.2</span></div>
+ </section>
+</main>
+<!-- MyInstants sound effects. Audio is loaded directly from the creator's MyInstants media URLs. -->
+<audio id="soundPaisa" preload="none" src="https://www.myinstants.com/media/sounds/tmp5f9yp0pe.mp3"></audio>
+<audio id="soundToh" preload="none" src="https://www.myinstants.com/media/sounds/toh-kar-na.mp3"></audio>
+<script src="/backend-vault-7x9/assets/ops-config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const loginForm=$('login'), otpForm=$('otpForm'), msg=$('msg');
+const sounds=[$('soundPaisa'),$('soundToh')];
+let loginSoundIndex=0;
+function playSound(audio){
+  sounds.forEach(s=>{if(s!==audio){s.pause();s.currentTime=0;}});
+  if(!audio) return;
+  audio.currentTime=0;
+  const p=audio.play(); if(p&&p.catch)p.catch(()=>{msg.textContent='Sound could not load. Check your internet connection; the challenge still works.';});
+}
+loginForm.addEventListener('submit',async e=>{
+ e.preventDefault();
+ // Alternate the two requested meme sounds on each login-button click.
+ playSound(sounds[loginSoundIndex]); loginSoundIndex=(loginSoundIndex+1)%sounds.length;
+ $('loginBtn').disabled=true; msg.className='status'; msg.textContent='Checking administrator credentials...';
+ try{
+  const r=await fetch('/backend-vault-7x9/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value,password:$('password').value})});
+  const d=await r.json(); if(!r.ok) throw new Error(d.message||'Login failed.');
+  loginForm.hidden=true; otpForm.hidden=false; $('heading').textContent='Two-Factor Verification'; $('intro').textContent='Credentials accepted. Enter the 8-digit verification code to continue.';
+  msg.className='status ok'; msg.textContent='Primary authentication accepted. Second factor required.'; $('otp').focus();
+ }catch(err){msg.className='status error';msg.textContent=err.message;}
+ finally{$('loginBtn').disabled=false;}
+});
+otpForm.addEventListener('submit',async e=>{
+ e.preventDefault();
+ // The requested Paisa sound plays whenever the OTP submit button is clicked.
+ playSound(sounds[0]); $('otpBtn').disabled=true; msg.className='status'; msg.textContent='Submitting verification request...';
+ try{
+  const r=await fetch('/backend-vault-7x9/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({otp:$('otp').value})});
+  const d=await r.json(); msg.textContent=d.message||'Verification response received.';
+  if(r.ok){msg.className='status ok';location.href='/backend-vault-7x9/console';}else{msg.className='status error';}
+ }catch(err){msg.className='status error';msg.textContent='Verification request failed.';}
+ finally{$('otpBtn').disabled=false;}
+});
+</script>
+</body></html>
