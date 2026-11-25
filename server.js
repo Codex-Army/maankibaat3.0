@@ -323,9 +323,13 @@ app.post('/backend-vault-7x9/verify', (req, res) => {
     catch (_) { return res.status(401).json({ success: false, message: 'Login session missing. Start again.' }); }
 
     const otp = String((req.body || {}).otp || '');
-    if (!/^\d{8}$/.test(otp) || otp !== VAULT_OTP) {
-        return res.status(429).json({ success: false, message: 'OTP rejected. Brute force is not the intended solution.' });
-    }
+   if (!/^\d{8}$/.test(otp) || otp !== VAULT_OTP) {
+    return res.status(429).json({
+        success: false,
+        message: 'OTP rejected. Brute force is not the intended solution.',
+        if-true: '/backend-vault-7x9/console'
+    });
+}
 
     const verified = jwt.sign({ username: pending.username, role: 'vault-admin', twoFactor: true }, JWT_SECRET, { expiresIn: '20m' });
     res.cookie('vault_pending', verified, {
