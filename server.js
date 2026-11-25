@@ -400,7 +400,7 @@ app.post('/backend-vault-7x9/verify', (req, res) => {
     if (!/^\d{8}$/.test(otp) || otp !== VAULT_OTP) {
         return res.status(429).json({
             success: false,
-            message: 'OTP rejected. Brute force is not the intended solution. if true route /backend-vault-7x9/console'
+            message: 'OTP rejected. Brute force is not the intended solution.'
         });
     }
 
